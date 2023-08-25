@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import gsap from 'gsap'
+//import gsap from 'gsap'
+import {OrbitControls} from'three/examples/jsm/controls/OrbitControls.js'
 
 console.log(THREE)
 
@@ -41,10 +42,6 @@ cube3.scale.set(1.2,0.2,3)
 group.add(cube3)
 
 
-//Axes helper
-const axesHelper = new THREE.AxesHelper(2)
-scene.add(axesHelper)
-
 const sizes = {
     height:600,
     width:800
@@ -54,36 +51,42 @@ const aspectRatio = sizes.width/sizes.height
 
 //在正交相机中乘以宽高比保证画面比例正确
 const camera = new THREE.OrthographicCamera(
-    -2*aspectRatio,2*aspectRatio,2,-2,0.1,100
+    -2*aspectRatio,2*aspectRatio,2,-2,0.01,100
 )
-camera.position.z = 3
+camera.position.z = 4
 
 scene.add(camera)
 
+//获取到canvas元素
+const canvas=document.querySelector('canvas.webgl')
+
 const renderer = new THREE.WebGLRenderer({
-    canvas:document.querySelector('canvas.webgl')
+    canvas:canvas
 })
 renderer.setSize(sizes.width,sizes.height)
 renderer.render(scene,camera)
 
-//Clock
-const clock = new THREE.Clock()
+//Controls
+const controls = new OrbitControls(camera,canvas)
+// //默认control的相机目标为000，可以单独设，记得update
+// controls.target.y=2
+// controls.update()
+//加入damping，让控制动画更顺滑
+controls.enableDamping=true
+
 
 //动画
 const tick=()=>
 {
-    //用时间而不是帧率统一动画速度
-    const elapsedTime = clock.getElapsedTime()
-
-    // //更新物体
-    // group.rotation.z=Math.sin(elapsedTime)
-    // group.rotation.y=Math.cos(elapsedTime)
-
     //更新相机
-    camera.position.x=cursor.x*3
-    camera.position.y = cursor.y*3
-    camera.lookAt(group.position)
+    // camera.position.x=Math.sin(cursor.x*Math.PI*2)//完整旋转一周
+    // camera.position.z = Math.cos(cursor.x*3*Math.PI*2)
+    // camera.position.y = cursor.y*5
+    // camera.lookAt(group.position)
 
+    //更新Controls
+    //在每帧渲染才能使damping在鼠标松开时也生效
+    controls.update()
     //每帧重新渲染
     renderer.render(scene,camera)
 
