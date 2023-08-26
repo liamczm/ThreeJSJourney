@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-//import gsap from 'gsap'
 import {OrbitControls} from'three/examples/jsm/controls/OrbitControls.js'
 
 console.log(THREE)
@@ -43,16 +42,18 @@ group.add(cube3)
 
 
 const sizes = {
-    height:600,
-    width:800
+    width:window.innerWidth,
+    height:window.innerHeight
 }
 const aspectRatio = sizes.width/sizes.height
-// const camera = new THREE.PerspectiveCamera(75,sizes.width/sizes.height)
 
-//在正交相机中乘以宽高比保证画面比例正确
-const camera = new THREE.OrthographicCamera(
-    -2*aspectRatio,2*aspectRatio,2,-2,0.01,100
-)
+
+const camera = new THREE.PerspectiveCamera(75,aspectRatio)
+
+// //在正交相机中乘以宽高比保证画面比例正确
+// const camera = new THREE.OrthographicCamera(
+//     -2*aspectRatio,2*aspectRatio,2,-2,0.01,100
+// )
 camera.position.z = 4
 
 scene.add(camera)
@@ -64,26 +65,71 @@ const renderer = new THREE.WebGLRenderer({
     canvas:canvas
 })
 renderer.setSize(sizes.width,sizes.height)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))//使画面渲染像素比不超过2
+
 renderer.render(scene,camera)
 
+//窗口大小
+window.addEventListener('resize',()=>
+{
+    //刷新sizes
+    sizes.width=window.innerWidth
+    sizes.height=window.innerHeight
+
+    //刷新camera
+    camera.aspect = sizes.width/sizes.height//透视相机保证画面比例正确
+    camera.updateProjectionMatrix()
+
+    //刷新renderer
+    renderer.setSize(sizes.width,sizes.height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))//使画面渲染像素比不超过2
+
+})
+window.addEventListener('dblclick',()=>
+{
+    //老版本safari不支持所以要写入webkit
+    const fullscreenElement = document.fullscreenElement||document.webkitFullscreenElement
+    if(!fullscreenElement)
+    {
+        if(canvas.requestFullscreen)
+        {
+            canvas.requestFullscreen()
+        }
+        else if (canvas.webkitRequestFullscreen)
+        {
+            canvas.webkitRequestFullscreen()
+        }
+    }
+    else
+    {
+        if(document.exitFullscreen)
+        {
+            document.exitFullscreen()
+        }
+        else if (document.webkitExitFullscreen)
+        {
+            document.webkitExitFullscreen()
+        }
+    }
+    // 简化版：safari可能不生效
+    // if(!document.fullscreenElement)
+    // {
+    //     canvas.requestFullscreen()
+    // }
+    // else
+    // {
+    //     document.exitFullscreen()
+    // }
+})
 //Controls
 const controls = new OrbitControls(camera,canvas)
-// //默认control的相机目标为000，可以单独设，记得update
-// controls.target.y=2
-// controls.update()
-//加入damping，让控制动画更顺滑
+
 controls.enableDamping=true
 
 
 //动画
 const tick=()=>
 {
-    //更新相机
-    // camera.position.x=Math.sin(cursor.x*Math.PI*2)//完整旋转一周
-    // camera.position.z = Math.cos(cursor.x*3*Math.PI*2)
-    // camera.position.y = cursor.y*5
-    // camera.lookAt(group.position)
-
     //更新Controls
     //在每帧渲染才能使damping在鼠标松开时也生效
     controls.update()
