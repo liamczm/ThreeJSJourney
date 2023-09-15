@@ -8,9 +8,16 @@ export default class Environment
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
+        this.debug = this.experience.debug
+
+        //Debug
+        if(this.debug.active)
+        {
+            this.debugFolder = this.debug.ui.addFolder('environment')
+        }
 
         this.setSunLight()
-        this.setEnvironmentMap()
+        this.environmentMap()
     }
     setSunLight()
     {
@@ -21,8 +28,17 @@ export default class Environment
         this.sunLight.shadow.normalBias = 0.05
         this.sunLight.position.set(3,3,-2.25)
         this.scene.add(this.sunLight)
+
+        //Debug
+        if(this.debug.active)
+        {
+            this.debugFolder.add(this.sunLight, 'intensity').min(0).max(10).step(0.01).name('太阳强度')
+            this.debugFolder.add(this.sunLight.position, 'x').min(-5).max(5).step(0.01).name('太阳位置x')
+            this.debugFolder.add(this.sunLight.position, 'y').min(-5).max(5).step(0.01).name('太阳高度')
+            this.debugFolder.add(this.sunLight.position, 'z').min(-5).max(5).step(0.01).name('太阳位置z')
+        }
     }
-    setEnvironmentMap()
+    environmentMap()
     {
         this.environmentMap={}
         this.environmentMap.intensity = 0.4
@@ -32,7 +48,7 @@ export default class Environment
         this.scene.environment = this.environmentMap.texture
 
         //更新所有模型的环境贴图
-        this.setEnvironmentMap.updateMaterial=()=>
+        this.environmentMap.updateMaterial=()=>
         {
             this.scene.traverse((child)=>
             {
@@ -43,6 +59,16 @@ export default class Environment
                 }
             })
         }
-        this.setEnvironmentMap.updateMaterial()
+        this.environmentMap.updateMaterial()
+
+        //Debug
+        if(this.debug.active)
+        {
+            this.debugFolder
+                .add(this.environmentMap,"intensity")
+                .min(0).max(4).step(0.01)
+                .name("环境强度")
+                .onChange(this.environmentMap.updateMaterial)
+        }
     }
 }

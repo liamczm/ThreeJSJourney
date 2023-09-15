@@ -6,6 +6,7 @@ import Renderer from "./Renderer";
 import World from "./World/World";
 import Resources from "./Utils/Resources";
 import sources from "./sources";
+import Debug from "./Utils/Debug";
 
 //设计模式：让Experience成为Singleton
 let instance = null
@@ -23,6 +24,7 @@ export default class Experience
         this.canvas = canvas;
 
         //Setup
+        this.debug = new Debug()
         this.sizes = new Sizes()
         this.time = new Time()
         this.scene = new THREE.Scene()
@@ -51,6 +53,38 @@ export default class Experience
     update()
     {
         this.camera.update()
+        this.world.update()
         this.renderer.update()
+    }
+    //释放内存，删除场景
+    destroy()
+    {
+        //停止听取事件
+        this.sizes.off('resize')
+        this.time.off('tick')
+
+        //遍历整个场景
+        this.scene.traverse(child=>
+        {
+            if(child instanceof THREE.Mesh)
+            {
+                child.geometry.dispose()
+
+                //循环所有的材质属性
+                for(const key in child.material)
+                {
+                    const value = child.material[key]
+                    //查看当前属性是否有dispose()方法
+                    if (value && typeof value.dispose === 'function')
+                        value.dispose()
+               }
+            }
+        })
+
+        this.camera.controls.dispose()
+        this.renderer.instance.dispose()
+        if (this.debug.active) {
+            this.debug.ui.destroy()
+        }
     }
 }
