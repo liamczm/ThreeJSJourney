@@ -16,11 +16,10 @@ const canvas = document.querySelector("canvas.webgl");
 // Scene
 const scene = new THREE.Scene();
 
-/**
- * Textures
- */
+//#region Textures
 const textureLoader = new THREE.TextureLoader();
-
+const flagTexture = textureLoader.load("/textures/flag-french.jpg");
+//#endregion
 /**
  * Test mesh
  */
@@ -40,8 +39,25 @@ geometry.setAttribute('aRandom',new THREE.BufferAttribute(randoms, 1));
 const material = new THREE.RawShaderMaterial({
   vertexShader: testVertexShader,
   fragmentShader: testFragmentShader,
+  uniforms:
+  {
+    uFrequency:{value:new THREE.Vector2(10,5)},
+    uTime:{value:0},
+    amplitude:{value:0.01},
+    uColor:{value:new THREE.Color(0xffffff)},
+    uTexture:{value:flagTexture},
+    useTexture:{value:false}
+  }
 //   wireframe: true,
 });
+
+//#region GUI
+gui.add(material.uniforms.uFrequency.value, "x", 0, 20,0.1).name("Frequency X");
+gui.add(material.uniforms.uFrequency.value, "y", 0, 20,0.1).name("Frequency Y");
+gui.add(material.uniforms.amplitude,'value',0.01,1,0.01).name("Amplitude");
+gui.addColor(material.uniforms.uColor, 'value').name("Color");
+gui.add(material.uniforms.useTexture, 'value').name("UseTexture");
+//#endregion
 
 // Mesh
 const mesh = new THREE.Mesh(geometry, material);
@@ -95,13 +111,15 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-/**
- * Animate
- */
+//#region Animate
 const clock = new THREE.Clock();
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime();
+
+  // Update Material
+  material.uniforms.uTime.value = elapsedTime;
+  //!不要使用Date.now()给uTime赋值，因为对于shader太大了
 
   // Update controls
   controls.update();
@@ -114,3 +132,4 @@ const tick = () => {
 };
 
 tick();
+//#endregion
