@@ -1,37 +1,46 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import {gsap} from 'gsap'
+import { gsap } from 'gsap'
 
-//#region Loaders
-//!使用loadingManager统一管理加载
+//!将js和html结合会影响性能，视情况使用
+/**
+ * Loaders
+ */
+let sceneReady=false
 const loadingBarElement = document.querySelector('.loading-bar')
-console.log(loadingBarElement)
 const loadingManager = new THREE.LoadingManager(
-    //Loaded
-    ()=>
+    // Loaded
+    () =>
     {
-        //设置延迟
-        window.setTimeout(()=>
+        // Wait a little
+        window.setTimeout(() =>
         {
-            gsap.to(overlayMaterial.uniforms.uAlpha,{duration:3,value:0})
+            // Animate overlay
+            gsap.to(overlayMaterial.uniforms.uAlpha, { duration: 3, value: 0, delay: 1 })
+
+            // Update loadingBarElement
             loadingBarElement.classList.add('ended')
             loadingBarElement.style.transform = ''
-        },500)
-        
+            sceneReady = true
+        }, 500)
+        window.setTimeout(()=>
+        {
+            sceneReady = true
+        },6000)
     },
-    //Progress
-    (itemUrl,itemsLoaded,itemsTotal)=>
+
+    // Progress
+    (itemUrl, itemsLoaded, itemsTotal) =>
     {
-        //TODO 分了两次加载
-        const progressRatio = itemsLoaded/itemsTotal;
-        console.log(itemsLoaded,itemsTotal,progressRatio)
+        // Calculate the progress and update the loadingBarElement
+        const progressRatio = itemsLoaded / itemsTotal
         loadingBarElement.style.transform = `scaleX(${progressRatio})`
     }
 )
 const gltfLoader = new GLTFLoader(loadingManager)
 const cubeTextureLoader = new THREE.CubeTextureLoader(loadingManager)
-//#endregion
+
 /**
  * Base
  */
@@ -44,24 +53,26 @@ const canvas = document.querySelector('canvas.webgl')
 // Scene
 const scene = new THREE.Scene()
 
-//#region Overlay
-const overlayGeometry = new THREE.PlaneGeometry(2, 2, 1,1)
+/**
+ * Overlay
+ */
+const overlayGeometry = new THREE.PlaneGeometry(2, 2, 1, 1)
 const overlayMaterial = new THREE.ShaderMaterial({
+    // wireframe: true,
     transparent: true,
-    uniforms:{
-        uAlpha: {value:0.5}
+    uniforms:
+    {
+        uAlpha: { value: 1 }
     },
-    vertexShader:
-    `
+    vertexShader: `
         void main()
         {
-            //移除projectionMatrix和modelViewMatrix直接得到面对相机
             gl_Position = vec4(position, 1.0);
         }
     `,
-    fragmentShader:
-    `
+    fragmentShader: `
         uniform float uAlpha;
+
         void main()
         {
             gl_FragColor = vec4(0.0, 0.0, 0.0, uAlpha);
@@ -70,7 +81,6 @@ const overlayMaterial = new THREE.ShaderMaterial({
 })
 const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial)
 scene.add(overlay)
-//#endregion
 
 /**
  * Update all materials
@@ -113,11 +123,10 @@ debugObject.envMapIntensity = 2.5
  * Models
  */
 gltfLoader.load(
-    '/models/FlightHelmet/glTF/FlightHelmet.gltf',
+    '/models/DamagedHelmet/glTF/DamagedHelmet.gltf',
     (gltf) =>
     {
-        gltf.scene.scale.set(10, 10, 10)
-        gltf.scene.position.set(0, - 4, 0)
+        gltf.scene.scale.set(2.5, 2.5, 2.5)
         gltf.scene.rotation.y = Math.PI * 0.5
         scene.add(gltf.scene)
 
@@ -125,6 +134,28 @@ gltfLoader.load(
     }
 )
 
+//#region Points of Interests
+const rayCaster = new THREE.Raycaster()
+const points=[
+    {
+        position: new THREE.Vector3(1.55, 0.3, -0.6),
+        element: document.querySelector('.point-0'),
+    },
+    {
+        position: new THREE.Vector3(0.5, 0.8, -1.6),
+        element: document.querySelector('.point-1'),
+    },
+    {
+        position: new THREE.Vector3(1.6, -1.3, -0.7),
+        element: document.querySelector('.point-2'),
+    },
+    {
+        position: new THREE.Vector3(1, -1, -1),
+        element: document.querySelector('.point-3'),
+    }
+]
+
+//#endregion
 /**
  * Lights
  */
@@ -194,6 +225,43 @@ const tick = () =>
 {
     // Update controls
     controls.update()
+
+    if(sceneReady)
+    {
+        for(const _point of points)
+        {
+            const screenPosition = _point.position.clone()
+            screenPosition.project(camera)
+
+            rayCaster.setFromCamera(screenPosition,camera)
+            const intersects = rayCaster.intersectObjects(scene.children, true)
+
+            if(intersects.length === 0)
+            {
+                _point.element.classList.add('visible')
+            }
+            else
+            {
+                // !通过比较点与相机距离和点到模型交点的距离大小判断点是在模型前还是后
+                const intersectDistance = intersects[0].distance
+                const pointDistance = _point.position.distanceTo(camera.position)
+                if(intersectDistance < pointDistance)
+                {
+                    _point.element.classList.remove('visible')
+                }
+                else
+                {
+                    _point.element.classList.add('visible')
+                }
+            }
+
+            const translateX = screenPosition.x*sizes.width/2
+            const translateY = -screenPosition.y*sizes.height/2
+            _point.element.style.transform = `translateX(${translateX}px) translateY(${translateY}px)`
+        }
+
+    }
+    // 遍历各个点
 
     // Render
     renderer.render(scene, camera)
