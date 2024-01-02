@@ -5,6 +5,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import firefliesVertexShader from './shaders/fireflies/vertex.glsl'
 import firefliesFragmentShader from './shaders/fireflies/fragment.glsl'
+import portalVertexShader from './shaders/portal/vertex.glsl'
+import portalFragmentShader from './shaders/portal/fragment.glsl'
 
 
 //#region Base
@@ -43,7 +45,32 @@ bakedTexture.colorSpace=THREE.SRGBColorSpace;
 //#region Material
 const bakedMaterial = new THREE.MeshBasicMaterial({map:bakedTexture})
 const poleLightMaterial = new THREE.MeshBasicMaterial({color:0xffffff})
-const potalLightMaterial = new THREE.MeshBasicMaterial({color:0xffffff})
+// portal Material
+
+debugObject.portalColorStart = '#ff0000';
+debugObject.portalColorEnd = '#0000ff';
+const portalLightMaterial = new THREE.ShaderMaterial({
+    uniforms:{
+        uTime:{value:0},
+        uColorStart:{value:new THREE.Color(debugObject.portalColorStart)},
+        uColorEnd:{value:new THREE.Color(debugObject.portalColorEnd)},
+    },
+    vertexShader:portalVertexShader,
+    fragmentShader:portalFragmentShader, 
+})
+
+gui
+    .addColor(debugObject, 'portalColorStart')
+    .onChange(()=>
+    {
+        portalLightMaterial.uniforms.uColorStart.value.set(debugObject.portalColorStart)
+    })
+gui
+    .addColor(debugObject, 'portalColorEnd')
+    .onChange(()=>
+    {
+        portalLightMaterial.uniforms.uColorEnd.value.set(debugObject.portalColorEnd)
+    })
 //#endregion
 
 
@@ -73,7 +100,7 @@ gltfLoader.load(
         poleLightDMesh.material = poleLightMaterial
         poleLightEMesh.material = poleLightMaterial
         poleLightFMesh.material = poleLightMaterial
-        portalLightMesh.material = potalLightMaterial
+        portalLightMesh.material = portalLightMaterial
         //console.log(gltf.scene)
         scene.add(gltf.scene)
     }
@@ -84,22 +111,31 @@ gltfLoader.load(
 const firefliesGeo = new THREE.BufferGeometry()
 const firefliesCount = 30
 const positionArray = new Float32Array(firefliesCount * 3)
+const scaleArray = new Float32Array(firefliesCount*1)
 for(let i = 0; i < firefliesCount ; i++)
 {
     positionArray[i * 3+0] = (Math.random() - 0.5) * 4
     positionArray[i * 3+1] = Math.random() * 4
     positionArray[i * 3+2] = (Math.random() - 0.5) * 4
+
+    scaleArray[i]= Math.random()
 }
+
 firefliesGeo.setAttribute('position', new THREE.BufferAttribute(positionArray, 3))
+firefliesGeo.setAttribute('aScale', new THREE.BufferAttribute(scaleArray,1 ))
+
 const firefliesMaterial = new THREE.ShaderMaterial({
     uniforms:
     {
         uPixelRatio: {value: Math.min(window.devicePixelRatio, 2)},
-        uSize:{value:100}
+        uSize:{value:100},
+        uTime:{value:0}
     },
     vertexShader:firefliesVertexShader,
     fragmentShader:firefliesFragmentShader,
-    transparent:true
+    transparent:true,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
 })
 gui.add(firefliesMaterial.uniforms.uSize, 'value', 0, 300).step(1).name('firefliesSize')
 const firefiles = new THREE.Points(firefliesGeo, firefliesMaterial)
@@ -164,6 +200,10 @@ const clock = new THREE.Clock()
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
+
+    // Update Materials
+    firefliesMaterial.uniforms.uTime.value = elapsedTime
+    portalLightMaterial.uniforms.uTime.value = elapsedTime
 
     // Update controls
     controls.update()
